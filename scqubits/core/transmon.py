@@ -164,6 +164,42 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
             check_finite=False,
         )
         return evals, evecs
+    
+    def get_spectrum_vs_paramvals(self, param_name, param_vals, evals_count = 6, subtract_ground = False, get_eigenstates = False, filename = None, num_cpus = None):
+        # param_vals = np.linspace(0, 2, 101)
+        if param_name == "ng":
+            integer_parts = (param_vals+0.5).astype(int)
+            decimal_parts = param_vals - integer_parts
+            if_reflected = decimal_parts < 0
+            decimal_parts_reflected = np.where(if_reflected, - decimal_parts, decimal_parts)
+            decimal_parts_rounded = np.round(decimal_parts_reflected, decimals=8)
+            param_vals_reduced = np.unique(decimal_parts_rounded)
+
+            spec_reduced = super().get_spectrum_vs_paramvals(param_name, param_vals_reduced, evals_count, get_eigenstates=True)
+            energy_reduced = spec_reduced.energy_table
+            state_reduced = np.array(spec_reduced.state_table)
+
+            energy_restore = np.zeros((len(param_vals),evals_count), dtype=float)
+            state_restore = np.zeros((len(param_vals), 2*self.ncut+1, evals_count), dtype=complex)
+            state_restore_temp = np.zeros((len(param_vals_reduced), 2*self.ncut+1, evals_count), dtype=complex)
+
+            for idx, ng in enumerate(param_vals_reduced):
+                mask = np.isclose(decimal_parts_rounded, ng, atol=1e-8)
+                energy_restore[mask,:] = energy_reduced[idx, :]
+                state_restore_temp[mask, :, :] = state_reduced[idx, :, :]
+
+            state_restore_temp[if_reflected, :, :] = state_restore_temp[if_reflected, ::-1, :]
+
+            for idx, shift in enumerate(integer_parts):
+                if shift == 0:
+                    state_restore[idx, :, :] = state_restore_temp[idx, :, :]
+                else:  
+                    state_restore[idx, shift:, :] = state_restore_temp[idx, :-shift, :]
+
+            return storage.SpectrumData(energy=energy_restore, state=state_restore)
+
+        else:
+            return super().get_spectrum_vs_paramvals(param_name, param_vals, evals_count, get_eigenstates=True)
 
     @staticmethod
     def find_EJ_EC(
