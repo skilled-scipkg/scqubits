@@ -165,17 +165,17 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
             check_finite=False,
         )
         return evals, evecs
-    
+
     def spectrum_restore(
-            self,
-            spec_reduced: storage.SpectrumData,
-            get_eigenstates: bool,
-            integer_parts: ndarray,
-            decimal_parts_rounded: ndarray,
-            is_reflected: ndarray,
-            param_vals_reduced: ndarray,
+        self,
+        spec_reduced: storage.SpectrumData,
+        get_eigenstates: bool,
+        integer_parts: ndarray,
+        decimal_parts_rounded: ndarray,
+        is_reflected: ndarray,
+        param_vals_reduced: ndarray,
     ) -> Tuple[ndarray, Optional[ndarray]]:
-        
+
         param_vals_len = spec_reduced.energy_table.shape[0]
         dim = 2 * self.ncut + 1
         evals_count = spec_reduced.energy_table.shape[1]
@@ -186,7 +186,7 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
                 mask = np.isclose(decimal_parts_rounded, ng, atol=1e-8)
                 energy_restore[mask, :] = spec_reduced.energy_table[idx, :]
             return energy_restore, None
-        
+
         energy_restore = np.zeros((param_vals_len, evals_count), dtype=float)
         state_restore = np.zeros((param_vals_len, dim, evals_count), dtype=complex)
         for idx, ng in enumerate(param_vals_reduced):
@@ -237,8 +237,16 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
             (default value: settings.NUM_CPUS)
         """
         if param_name != "ng":
-            return super().get_spectrum_vs_paramvals(param_name, param_vals, evals_count, subtract_ground, get_eigenstates, filename, num_cpus)
-        
+            return super().get_spectrum_vs_paramvals(
+                param_name,
+                param_vals,
+                evals_count,
+                subtract_ground,
+                get_eigenstates,
+                filename,
+                num_cpus,
+            )
+
         # Decompose param_vals into integer and fractional parts and get unique fractional parts using transmon symmetry.
         integer_parts = np.round(param_vals).astype(int)
         decimal_parts = param_vals - integer_parts
@@ -248,15 +256,30 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
         param_vals_reduced = np.unique(decimal_parts_rounded)
 
         # Calculate the reduced spectrum using the reduced parameter values.
-        spec_reduced = super().get_spectrum_vs_paramvals(param_name, param_vals_reduced, evals_count, subtract_ground, get_eigenstates, filename, num_cpus)
-        eigenvalue_table, eigenstate_table = spectrum_restore(spec_reduced, get_eigenstates, integer_parts, decimal_parts_rounded, is_reflected, param_vals_reduced)    
+        spec_reduced = super().get_spectrum_vs_paramvals(
+            param_name,
+            param_vals_reduced,
+            evals_count,
+            subtract_ground,
+            get_eigenstates,
+            num_cpus=num_cpus,
+            filename=None,
+        )
+        eigenvalue_table, eigenstate_table = self.spectrum_restore(
+            spec_reduced,
+            get_eigenstates,
+            integer_parts,
+            decimal_parts_rounded,
+            is_reflected,
+            param_vals_reduced,
+        )
         specdata = storage.SpectrumData(
-                    eigenvalue_table,
-                    self.get_initdata(),
-                    param_name,
-                    param_vals,
-                    state_table=eigenstate_table,
-                )
+            eigenvalue_table,
+            self.get_initdata(),
+            param_name,
+            param_vals,
+            state_table=eigenstate_table,
+        )
         if filename:
             specdata.filewrite(filename)
         return specdata
