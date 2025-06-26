@@ -166,12 +166,12 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
         )
         return evals, evecs
 
-    def spectrum_restore(
+    def restored_full_param_spec(
         self,
         spec_reduced: storage.SpectrumData,
         get_eigenstates: bool,
-        integer_parts: ndarray,
-        decimal_parts_rounded: ndarray,
+        mapping_periods: ndarray,
+        param_vals_mapped_reflected: ndarray,
         is_reflected: ndarray,
         param_vals_reduced: ndarray,
     ) -> Tuple[ndarray, Optional[ndarray]]:
@@ -180,22 +180,20 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
         dim = 2 * self.ncut + 1
         evals_count = spec_reduced.energy_table.shape[1]
 
-        if not get_eigenstates:
-            energy_restore = np.zeros((param_vals_len, evals_count), dtype=float)
-            for idx, ng in enumerate(param_vals_reduced):
-                mask = np.isclose(decimal_parts_rounded, ng, atol=1e-8)
-                energy_restore[mask, :] = spec_reduced.energy_table[idx, :]
-            return energy_restore, None
-
         energy_restore = np.zeros((param_vals_len, evals_count), dtype=float)
         state_restore = np.zeros((param_vals_len, dim, evals_count), dtype=complex)
+
         for idx, ng in enumerate(param_vals_reduced):
-            mask = np.isclose(decimal_parts_rounded, ng, atol=1e-8)
+            mask = np.isclose(param_vals_mapped_reflected, ng, atol=1e-8)
             energy_restore[mask, :] = spec_reduced.energy_table[idx, :]
-            state_restore[mask, :, :] = spec_reduced.state_table[idx, :, :]
+            if get_eigenstates:
+                state_restore[mask, :, :] = spec_reduced.state_table[idx, :, :]
+
+        if not get_eigenstates:
+            return energy_restore, None
 
         state_restore[is_reflected] = state_restore[is_reflected, ::-1, :]
-        for idx, shift in enumerate(integer_parts):
+        for idx, shift in enumerate(mapping_periods):
             if shift > 0:
                 state_restore[idx, shift:, :] = state_restore[idx, :-shift, :]
                 state_restore[idx, :shift, :] = 0
@@ -247,13 +245,12 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
                 num_cpus,
             )
 
-        # Decompose param_vals into integer and fractional parts and get unique fractional parts using transmon symmetry.
-        integer_parts = np.round(param_vals).astype(int)
-        decimal_parts = param_vals - integer_parts
-        is_reflected = decimal_parts < 0
-        decimal_parts = np.abs(decimal_parts)
-        decimal_parts_rounded = np.round(decimal_parts, decimals=8)
-        param_vals_reduced = np.unique(decimal_parts_rounded)
+        # Map ng values to the [−0.5, 0.5] unit interval, track reflection symmetry, and extract unique values
+        mapping_periods = np.round(param_vals + 0.5).astype(int)
+        param_vals_mapped = param_vals - mapping_periods
+        is_reflected = param_vals_mapped < 0
+        param_vals_mapped_reflected = np.round(np.abs(param_vals_mapped), decimals=8)
+        param_vals_reduced = np.unique(param_vals_mapped_reflected)
 
         # Calculate the reduced spectrum using the reduced parameter values.
         spec_reduced = super().get_spectrum_vs_paramvals(
@@ -265,11 +262,11 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
             num_cpus=num_cpus,
             filename=None,
         )
-        eigenvalue_table, eigenstate_table = self.spectrum_restore(
+        eigenvalue_table, eigenstate_table = self.restored_full_param_spec(
             spec_reduced,
             get_eigenstates,
-            integer_parts,
-            decimal_parts_rounded,
+            mapping_periods,
+            param_vals_mapped_reflected,
             is_reflected,
             param_vals_reduced,
         )
