@@ -176,7 +176,7 @@ class Transmon(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
         param_vals_reduced: ndarray,
     ) -> Tuple[ndarray, Optional[ndarray]]:
 
-        param_vals_len = spec_reduced.energy_table.shape[0]
+        param_vals_len = is_reflected.shape[0]
         dim = 2 * self.ncut + 1
         evals_count = spec_reduced.energy_table.shape[1]
 

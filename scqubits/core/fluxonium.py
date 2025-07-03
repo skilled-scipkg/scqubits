@@ -444,3 +444,114 @@ class Fluxonium(base.QubitBaseClass1d, serializers.Serializable, NoisySystem):
             amplitudes=phi_wavefunc_amplitudes,
             energy=evals[which],
         )
+
+    def restored_full_param_spec(
+        self,
+        spec_reduced: storage.SpectrumData,
+        get_eigenstates: bool,
+        mapping_periods: ndarray,
+        param_vals_mapped_reflected: ndarray,
+        is_reflected: ndarray,
+        param_vals_reduced: ndarray,
+    ) -> Tuple[ndarray, Optional[ndarray]]:
+
+        param_vals_len = is_reflected.shape[0]
+        dim = self.cutoff
+        evals_count = spec_reduced.energy_table.shape[1]
+
+        energy_restore = np.zeros((param_vals_len, evals_count), dtype=float)
+        state_restore = np.zeros((param_vals_len, dim, evals_count), dtype=complex)
+
+        for idx, ng in enumerate(param_vals_reduced):
+            mask = np.isclose(param_vals_mapped_reflected, ng, atol=1e-8)
+            energy_restore[mask, :] = spec_reduced.energy_table[idx, :]
+            if get_eigenstates:
+                state_restore[mask, :, :] = spec_reduced.state_table[idx, :, :]
+
+        if not get_eigenstates:
+            return energy_restore, None
+
+        state_restore[is_reflected, 1::2, :] *= -1
+        return energy_restore, state_restore
+
+    def get_spectrum_vs_paramvals(
+        self,
+        param_name: str,
+        param_vals: ndarray,
+        evals_count: int = 6,
+        subtract_ground: bool = False,
+        get_eigenstates: bool = False,
+        filename: str = None,
+        num_cpus: Optional[int] = None,
+    ) -> storage.SpectrumData:
+        """Calculates eigenvalues/eigenstates for a varying system parameter, given an
+        array of parameter values. Returns a :class:`SpectrumData` object with
+        `energy_table[n]` containing eigenvalues calculated for parameter value
+        `param_vals[n]`.
+
+        Parameters
+        ----------
+        param_name:
+            name of parameter to be varied
+        param_vals:
+            parameter values to be plugged in
+        evals_count:
+            number of desired eigenvalues (sorted from smallest to largest)
+            (default value = 6)
+        subtract_ground:
+            if True, eigenvalues are returned relative to the ground state eigenvalue
+            (default value = False)
+        get_eigenstates:
+            return eigenstates along with eigenvalues (default value = False)
+        filename:
+            file name if direct output to disk is wanted
+        num_cpus:
+            number of cores to be used for computation
+            (default value: settings.NUM_CPUS)
+        """
+        if param_name != "phi":
+            return super().get_spectrum_vs_paramvals(
+                param_name,
+                param_vals,
+                evals_count,
+                subtract_ground,
+                get_eigenstates,
+                filename,
+                num_cpus,
+            )
+
+        # Map phi values to the [−0.5, 0.5] unit interval, track reflection symmetry, and extract unique values
+        mapping_periods = np.round(param_vals + 0.5).astype(int)
+        param_vals_mapped = param_vals - mapping_periods
+        is_reflected = param_vals_mapped < 0
+        param_vals_mapped_reflected = np.round(np.abs(param_vals_mapped), decimals=8)
+        param_vals_reduced = np.unique(param_vals_mapped_reflected)
+
+        # Calculate the reduced spectrum using the reduced parameter values.
+        spec_reduced = super().get_spectrum_vs_paramvals(
+            param_name,
+            param_vals_reduced,
+            evals_count,
+            subtract_ground,
+            get_eigenstates,
+            num_cpus=num_cpus,
+            filename=None,
+        )
+        eigenvalue_table, eigenstate_table = self.restored_full_param_spec(
+            spec_reduced,
+            get_eigenstates,
+            mapping_periods,
+            param_vals_mapped_reflected,
+            is_reflected,
+            param_vals_reduced,
+        )
+        specdata = storage.SpectrumData(
+            eigenvalue_table,
+            self.get_initdata(),
+            param_name,
+            param_vals,
+            state_table=eigenstate_table,
+        )
+        if filename:
+            specdata.filewrite(filename)
+        return specdata
