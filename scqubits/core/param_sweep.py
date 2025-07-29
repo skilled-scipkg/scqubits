@@ -939,7 +939,7 @@ class ParameterSweep(  # type:ignore
     bare_only:
         if set to True, only bare eigendata is calculated; useful when performing a
         sweep for a single quantum system, no interaction (default: False)
-    lookup_scheme:
+    labeling_scheme:
         the scheme of genenrating the dressed state labeling in lookup table.
         - "DE" (Dressed Energy): traverse the eigenstates
         in the order of their dressed energy, and find the corresponding bare
@@ -951,12 +951,12 @@ class ParameterSweep(  # type:ignore
         useful when the Hilbert space is too large and not all the eigenstates need
         to be labeled.
 
-    lookup_subsys_priority:
+    labeling_subsys_priority:
         a permutation of the subsystem indices and bare labels. If it is provided,
         lexical ordering is performed on the permuted labels. A "branch" is defined
         as a series of eigenstates formed by putting excitations into the last
         subsystem in the list.
-    lookup_BEs_count:
+    labeling_BEs_count:
         the number of dressed states to be labeled, for "BE" scheme only.
     ignore_low_overlap:
         if set to False (default), bare product states and dressed eigenstates are
