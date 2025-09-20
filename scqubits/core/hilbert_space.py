@@ -920,12 +920,12 @@ class HilbertSpace(
                 [1] if len(self.subsystem_dims) == 0 else self.subsystem_dims
             )
 
-        operator_list = []
+        hamiltonian = cast(qt.Qobj, 0.0)
         for term in self.interaction_list:
             if isinstance(term, qt.Qobj):
-                operator_list.append(term)
+                hamiltonian += term
             elif isinstance(term, (InteractionTerm, InteractionTermStr)):
-                operator_list.append(
+                hamiltonian += (
                     term.hamiltonian(self.subsystem_list, bare_esys=bare_esys)
                 )
             else:
@@ -933,7 +933,6 @@ class HilbertSpace(
                     "Expected an instance of InteractionTerm, InteractionTermStr, "
                     "or Qobj; got {} instead.".format(type(term))
                 )
-        hamiltonian = sum(operator_list)
         return hamiltonian
 
     def diag_hamiltonian(self, subsystem: QuantumSys, evals: ndarray = None) -> qt.Qobj:
