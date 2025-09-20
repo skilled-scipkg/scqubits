@@ -104,10 +104,12 @@ class InteractionTerm(dispatch.DispatchClient, serializers.Serializable):
         self,
         g_strength: Union[float, complex],
         operator_list: List[Tuple[int, Union[ndarray, csc_matrix, Callable]]],
-        add_hc: bool = False,
+        is_dia_list: List[bool],
+        add_hc: bool = False
     ) -> None:
         self.g_strength = g_strength
         self.operator_list = operator_list
+        self.is_dia_list = is_dia_list
         self.add_hc = add_hc
 
     def __repr__(self) -> str:
@@ -154,7 +156,7 @@ class InteractionTerm(dispatch.DispatchClient, serializers.Serializable):
         """
         hamiltonian = cast(qt.Qobj, self.g_strength)
         id_wrapped_ops = self.id_wrap_all_ops(
-            self.operator_list, subsystem_list, bare_esys=bare_esys
+            self.operator_list, self.is_dia_list, subsystem_list, bare_esys=bare_esys
         )
         for op in id_wrapped_ops:
             hamiltonian *= op
@@ -165,6 +167,7 @@ class InteractionTerm(dispatch.DispatchClient, serializers.Serializable):
     @staticmethod
     def id_wrap_all_ops(
         operator_list: List[Tuple[int, Union[ndarray, csc_matrix, Callable]]],
+        is_dia_list: List[bool],
         subsystem_list: List[QuantumSys],
         bare_esys: Optional[Dict[int, ndarray]] = None,
     ) -> List[qt.Qobj]:
@@ -187,7 +190,7 @@ class InteractionTerm(dispatch.DispatchClient, serializers.Serializable):
             list of identity-wrapped operators
         """
         id_wrapped_operators = []
-        for subsys_index, operator in operator_list:
+        for (subsys_index, operator), is_dia in zip(operator_list, is_dia_list):
             if bare_esys is not None and subsys_index in bare_esys:
                 esys = bare_esys[subsys_index]
                 evecs = esys[1]
@@ -211,6 +214,7 @@ class InteractionTerm(dispatch.DispatchClient, serializers.Serializable):
                     subsystem_list,
                     evecs=evecs,
                     op_in_eigenbasis=op_in_eigenbasis,
+                    is_dia=is_dia
                 )
             )
         return id_wrapped_operators
@@ -949,7 +953,7 @@ class HilbertSpace(
             evals = subsystem.eigenvals(evals_count=evals_count)
         diag_qt_op = qt.Qobj(np.diagflat(evals[0:evals_count]))  # type:ignore
         return spec_utils.identity_wrap(
-            diag_qt_op, subsystem, self.subsystem_list, op_in_eigenbasis=True
+            diag_qt_op, subsystem, self.subsystem_list, op_in_eigenbasis=True, is_dia=True
         )
 
     ###################################################################################
@@ -1290,13 +1294,19 @@ class HilbertSpace(
         add_hc = kwargs.pop("add_hc", False)
 
         operator_list = []
+        is_dia_list = []
         for key in kwargs.keys():
-            if re.match(r"op\d+$", key) is None:
+            op_match = re.match(r"op(\d+)$", key)
+            if op_match is not None:                
+                subsys_index, op = self._parse_non_strbased_op(kwargs[key])
+                operator_list.append((subsys_index, op))
+                op_id = int(op_match.group(1))
+                is_dia = kwargs.get(f"is_dia{op_id}", False)
+                is_dia_list.append(is_dia)
+            elif re.match(r"is_dia\d+$", key) is None:
                 raise TypeError("Unexpected keyword argument {}.".format(key))
-            subsys_index, op = self._parse_non_strbased_op(kwargs[key])
-            operator_list.append((subsys_index, op))
-
-        return InteractionTerm(g, operator_list, add_hc=add_hc)
+            
+        return InteractionTerm(g, operator_list, is_dia_list, add_hc=add_hc)
 
     @staticmethod
     def _parse_qobj(**kwargs) -> qt.Qobj:

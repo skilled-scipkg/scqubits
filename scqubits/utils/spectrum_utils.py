@@ -408,6 +408,7 @@ def identity_wrap(
     subsys_list: List["QuantumSys"],
     op_in_eigenbasis: bool = False,
     evecs: Optional[ndarray] = None,
+    is_dia: bool = False
 ) -> Qobj:
     """Takes the `operator` belonging to `subsystem` and "wraps" it in identities. The
     full Hilbert space is taken to consist of all subsystems given as `subsys_list`.
@@ -443,6 +444,8 @@ def identity_wrap(
     subsys_operator = convert_operator_to_qobj(
         operator, subsystem, op_in_eigenbasis, evecs  # type:ignore
     )
+    if(is_dia):
+        subsys_operator = subsys_operator.to('dia')
     operator_identitywrap_list = [
         qt.operators.qeye(the_subsys.truncated_dim) for the_subsys in subsys_list
     ]
