@@ -25,7 +25,7 @@ from scipy.sparse import csc_matrix, dia_matrix, csr_matrix
 import scqubits.settings as settings
 
 if TYPE_CHECKING:
-    from scqubits import Oscillator, ParameterSweep, SpectrumData
+    from scqubits import Oscillator, ParameterSweep, SpectrumData, HilbertSpace
     from scqubits.core.qubit_base import QubitBaseClass
     from scqubits.io_utils.fileio_qutip import QutipEigenstates
 
@@ -449,3 +449,41 @@ def identity_wrap(
     subsystem_index = subsys_list.index(subsystem)
     operator_identitywrap_list[subsystem_index] = subsys_operator
     return qt.tensor(operator_identitywrap_list)
+
+
+def sweep_data_to_hilbertspace(
+    sweep: "ParameterSweep",
+    idx: int | Tuple[int, ...],
+    hilbertspace: "Optional[HilbertSpace]" = None,
+):
+    """
+    Transfer spectrum and lookup data from a ParameterSweep object to 
+    a HilbertSpace object. Keys include:
+    - evals
+    - evecs
+    - bare_evals
+    - bare_evecs
+    - dressed_indices
+
+    Parameters
+    ----------
+    sweep: ParameterSweep
+        The ParameterSweep object to transfer data from.
+    idx: int | Tuple[int, ...]
+        The index of the data in the ParameterSweep object.
+    hspace: Optional[HilbertSpace] = None
+        The HilbertSpace object to transfer data to. 
+        If None, the HilbertSpace object of the ParameterSweep object will be used.
+    """
+    if hilbertspace is None:
+        hilbertspace = sweep.hilbertspace
+        
+    if len(hilbertspace._data.keys()) < 5:
+        hilbertspace.generate_lookup()
+
+    for key in hilbertspace._data.keys():
+        if key in ["bare_evals", "bare_evecs"]:
+            for subsys_idx in range(len(hilbertspace.subsystem_list)):
+                hilbertspace._data[key][subsys_idx][0, :] = sweep[key][subsys_idx][idx]
+        else:
+            hilbertspace._data[key] = sweep[key][idx].reshape(1, -1)

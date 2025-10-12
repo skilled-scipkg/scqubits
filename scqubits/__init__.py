@@ -91,7 +91,7 @@ except (ImportError, NameError):
 from scqubits.utils.misc import about, cite
 
 # spectrum utils
-from scqubits.utils.spectrum_utils import identity_wrap
+from scqubits.utils.spectrum_utils import identity_wrap, sweep_data_to_hilbertspace
 
 # Import of custom-circuit modules needs to take place after other imports to
 # avoid circular import issues

@@ -48,6 +48,7 @@ import scqubits.io_utils.fileio_serializers as serializers
 import scqubits.utils.cpu_switch as cpu_switch
 import scqubits.utils.misc as utils
 import scqubits.utils.plotting as plot
+from scqubits.utils.spectrum_utils import sweep_data_to_hilbertspace
 from scqubits import settings as settings
 from scqubits.core.hilbert_space import HilbertSpace
 from scqubits.core.namedslots_array import (
@@ -1504,6 +1505,7 @@ class ParameterSweep(  # type:ignore
         def desired_func(parametersweep, paramindex_tuple, paramvals_tuple, **kwargs):
             if update_hilbertspace:
                 self._update_hilbertspace(self, *paramvals_tuple)
+                sweep_data_to_hilbertspace(self, paramindex_tuple)
                 
                 # Circuit module updates, similar to self._update_and_compute_dressed_esys
                 for subsys_index, subsys in enumerate(self.hilbertspace.subsystem_list):
