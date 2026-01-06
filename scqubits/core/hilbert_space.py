@@ -760,8 +760,12 @@ class HilbertSpace(
         """
         # hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
         # return hamiltonian_mat.eigenenergies(eigvals=evals_count)
-
+        
+        if self.evals_method is "evals_cuquantum":
         hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+        if cuquantum:
+            with CuQuantumBackend(ctx):
+                hamiltonian_mat = CuQobjEvo(hamiltonian_mat).operator
 
         if not hasattr(self, "evals_method") or self.evals_method is None:
             evals = hamiltonian_mat.eigenenergies(eigvals=evals_count)
@@ -780,6 +784,9 @@ class HilbertSpace(
                     else self.evals_method_options
                 ),
             )
+
+        if cuquantum:
+            with CuQuantumBackend(ctx):
         return evals
 
     def eigensys(
@@ -803,8 +810,21 @@ class HilbertSpace(
         -------
             eigenvalues and eigenvectors
         """
-
-        hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+        if self.esys_method == "esys_cuquantum":
+            try:
+                import qutip_cuquantum
+                from qutip_cuquantum import CuQuantumBackend
+                from qutip_cuquantum.qobjevo import CuQobjEvo
+                from cuquantum.densitymat import DensePureState, WorkStream, OperatorSpectrumSolver, OperatorSpectrumConfig
+                ctx = WorkStream()
+            except:
+                raise ImportError("Package qutip_cuquantum is not installed.")
+            with CuQuantumBackend(ctx):
+                hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+                result = spectrum_solver.solve(hamiltonian_mat)
+                return result.eigenvalues, result.eigenstates
+        else:
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
 
         if not hasattr(self, "esys_method") or self.esys_method is None:
             evals, evecs = hamiltonian_mat.eigenstates(eigvals=evals_count)

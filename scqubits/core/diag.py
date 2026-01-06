@@ -672,6 +672,13 @@ def esys_jax_dense(
     )
     return evals, evecs
 
+def esys_cuquantum(
+    matrix: Union[ndarray, csc_matrix, Qobj], evals_count: int, **kwargs
+):
+    m = CuQobjEvo(matrix).operator
+    
+
+    return evals, evecs
 
 # Default values of various noise constants and parameters.
 DIAG_METHODS = {
