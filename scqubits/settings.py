@@ -170,3 +170,9 @@ OVERLAP_THRESHOLD = 0.5
 # The following determines the threshold for the number of nodes above which the
 # symbolic inversion of the capacitance matrix is skipped.
 SYM_INVERSION_MAX_NODES = 3
+
+try:
+    import cuquantum, qutip_cuquantum
+    CUQUANTUM_INSTALLED = True
+except:
+    CUQUANTUM_INSTALLED = False

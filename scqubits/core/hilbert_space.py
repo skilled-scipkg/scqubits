@@ -741,6 +741,8 @@ class HilbertSpace(
     ###################################################################################
     # HilbertSpace: energy spectrum
     ##################################################################################
+    def _ham_for_eig
+
     def eigenvals(
         self,
         evals_count: int = 6,
@@ -761,11 +763,27 @@ class HilbertSpace(
         # hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
         # return hamiltonian_mat.eigenenergies(eigvals=evals_count)
         
-        if self.evals_method is "evals_cuquantum":
-        hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
-        if cuquantum:
-            with CuQuantumBackend(ctx):
-                hamiltonian_mat = CuQobjEvo(hamiltonian_mat).operator
+        if qt.settings.core["default_dtype"] == "cuDensity":
+            print("backend activated, use cuQuantum")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+            if self.evals_method != "evals_cuquantum":
+                # self.evals_method = "evals_cuquantum"
+                # print("evals_method set to evals_cuquantum")
+                print("using non cuquantum method is not recommended")
+        elif self.evals_method is "evals_cuquantum":
+            print("backend deactivated, activate cuQuantum")
+            # if not settings.CUQUANTUM_INSTALLED:
+            #     raise ImportError("cuQuantum is not installed")
+            try:
+                import qutip_cuquantum
+            except:
+                raise ImportError("Package qutip_cuquantum is not installed.")
+            ctx = qutip_cuquantum.WorkStream()
+            with qutip_cuquantum.CuQuantumBackend(ctx):
+                hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+        else:
+            print("backend deactivated, use default backend")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
 
         if not hasattr(self, "evals_method") or self.evals_method is None:
             evals = hamiltonian_mat.eigenenergies(eigvals=evals_count)
@@ -784,9 +802,6 @@ class HilbertSpace(
                     else self.evals_method_options
                 ),
             )
-
-        if cuquantum:
-            with CuQuantumBackend(ctx):
         return evals
 
     def eigensys(
@@ -810,21 +825,8 @@ class HilbertSpace(
         -------
             eigenvalues and eigenvectors
         """
-        if self.esys_method == "esys_cuquantum":
-            try:
-                import qutip_cuquantum
-                from qutip_cuquantum import CuQuantumBackend
-                from qutip_cuquantum.qobjevo import CuQobjEvo
-                from cuquantum.densitymat import DensePureState, WorkStream, OperatorSpectrumSolver, OperatorSpectrumConfig
-                ctx = WorkStream()
-            except:
-                raise ImportError("Package qutip_cuquantum is not installed.")
-            with CuQuantumBackend(ctx):
-                hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
-                result = spectrum_solver.solve(hamiltonian_mat)
-                return result.eigenvalues, result.eigenstates
-        else:
-            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+
+        hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
 
         if not hasattr(self, "esys_method") or self.esys_method is None:
             evals, evecs = hamiltonian_mat.eigenstates(eigvals=evals_count)
