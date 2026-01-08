@@ -12,7 +12,7 @@
 
 from numpy import ndarray
 from typing import Any, Dict, List, Optional, Tuple, Union
-from qutip import Qobj
+from qutip import Qobj, QobjEvo
 from scipy.sparse import csc_matrix
 from scqubits.io_utils.fileio_qutip import QutipEigenstates
 from scqubits.utils.spectrum_utils import order_eigensystem, has_degeneracy
@@ -672,35 +672,50 @@ def esys_jax_dense(
     )
     return evals, evecs
 
-def cuquantum_converter:
-    if not qobj:
-        qt.Qobj(m)
-    m = CuQobjEvo(matrix).operator
+# def cuquantum_converter:
+#     if not qobj:
+#         qt.Qobj(m)
+#     m = CuQobjEvo(matrix).operator
 
-def evals_cuquantum(
-    matrix: Union[ndarray, csc_matrix, Qobj], evals_count: int, **kwargs
-):
-
-
-
-    m = CuQobjEvo(matrix).operator
-    hilbert_space_dims = hilbertspace.subsystem_dims
+def esys_cuquantum(
+    matrix: Union[Qobj], evals_count: int, **kwargs
+) -> Union[Tuple[ndarray, ndarray], Tuple[ndarray, ndarray]]:
+    #### cuquantum is only recommended inputs to be sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
+    try:
+        import qutip_cuquantum, cuquantum.densitymat, cupy
+    except:
+        raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
+    print(matrix.data)
+    ctx = cuquantum.densitymat.WorkStream()
+    m = qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
+    hilbert_space_dims = matrix.dims[0]
 
     batch_size = 1
     max_num_eigvals = evals_count
     hilbert_vol = np.prod(hilbert_space_dims)
 
-    init_state = DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
+    init_state = cuquantum.densitymat.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
     init_state.allocate_storage()
-    init_state.storage[:] = cp.random.randn(hilbert_vol * batch_size)
+    init_state.storage[:] = cupy.random.randn(hilbert_vol * batch_size)
     norm = init_state.norm()
-    init_state.inplace_scale(1.0 / cp.sqrt(norm))
+    init_state.inplace_scale(1.0 / cupy.sqrt(norm))
 
-    spectrum = OperatorSpectrumSolver(H, "SA", True, config)
+    config = cuquantum.densitymat.OperatorSpectrumConfig(
+        min_krylov_block_size=1,
+        max_buffer_ratio=5,
+        max_restarts=20
+    )
+
+    spectrum = cuquantum.densitymat.OperatorSpectrumSolver(m, "SA", True, config)
     spectrum.prepare(ctx, init_state, max_num_eigvals=max_num_eigvals)
     result = spectrum.compute(0.0, None, (init_state,)*max_num_eigvals, 1e-10)
-    evals, evecs = result.eigenvalues, result.eigenstates
-    return evals, 
+    evals, evecs = result.evals, result.evecs
+    return evals, evecs
+
+def evals_cuquantum(
+    matrix: Union[Qobj], evals_count: int, **kwargs
+) -> ndarray:
+    return esys_cuquantum(matrix, evals_count, **kwargs)[0]
 
 # Default values of various noise constants and parameters.
 DIAG_METHODS = {
@@ -776,4 +791,7 @@ DIAG_METHODS = {
     # jax dense
     "evals_jax_dense": evals_jax_dense,
     "esys_jax_dense": esys_jax_dense,
+    # cuquantum
+    "evals_cuquantum": evals_cuquantum,
+    "esys_cuquantum": esys_cuquantum,
 }

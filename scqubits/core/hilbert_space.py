@@ -741,8 +741,6 @@ class HilbertSpace(
     ###################################################################################
     # HilbertSpace: energy spectrum
     ##################################################################################
-    def _ham_for_eig
-
     def eigenvals(
         self,
         evals_count: int = 6,
@@ -760,25 +758,22 @@ class HilbertSpace(
             optionally, the bare eigensystems for each subsystem can be provided to
             speed up computation; these are provided in dict form via <subsys>: esys
         """
-        # hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
-        # return hamiltonian_mat.eigenenergies(eigvals=evals_count)
         
         if qt.settings.core["default_dtype"] == "cuDensity":
             print("backend activated, use cuQuantum")
             hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
             if self.evals_method != "evals_cuquantum":
-                # self.evals_method = "evals_cuquantum"
-                # print("evals_method set to evals_cuquantum")
-                print("using non cuquantum method is not recommended")
-        elif self.evals_method is "evals_cuquantum":
-            print("backend deactivated, activate cuQuantum")
-            # if not settings.CUQUANTUM_INSTALLED:
-            #     raise ImportError("cuQuantum is not installed")
+                self.evals_method = "evals_cuquantum"
+                print("Warning: Detected qutip-cuquantum backend activated. Setting evals_method to evals_cuquantum.")
+                ##### Should we provide user options to use non-cuquantum methods when backend is activated?
+                ##### Convert evals_method back to original
+        elif self.evals_method == "evals_cuquantum":
+            print("backend deactivated, import cuQuantum and activate backend")
             try:
-                import qutip_cuquantum
+                import qutip_cuquantum, cuquantum.densitymat
             except:
-                raise ImportError("Package qutip_cuquantum is not installed.")
-            ctx = qutip_cuquantum.WorkStream()
+                raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
+            ctx = cuquantum.densitymat.WorkStream()
             with qutip_cuquantum.CuQuantumBackend(ctx):
                 hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
         else:
@@ -826,7 +821,24 @@ class HilbertSpace(
             eigenvalues and eigenvectors
         """
 
-        hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+        if qt.settings.core["default_dtype"] == "cuDensity":
+            print("backend activated, use cuQuantum")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+            if self.esys_method != "esys_cuquantum":
+                self.esys_method = "esys_cuquantum"
+                print("Warning: Detected qutip-cuquantum backend activated. Setting esys_method to esys_cuquantum.")
+        elif self.esys_method == "esys_cuquantum":
+            print("backend deactivated, import cuQuantum and activate backend")
+            try:
+                import qutip_cuquantum, cuquantum.densitymat
+            except:
+                raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
+            ctx = cuquantum.densitymat.WorkStream()
+            with qutip_cuquantum.CuQuantumBackend(ctx):
+                hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+        else:
+            print("backend deactivated, use default backend")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
 
         if not hasattr(self, "esys_method") or self.esys_method is None:
             evals, evecs = hamiltonian_mat.eigenstates(eigvals=evals_count)
