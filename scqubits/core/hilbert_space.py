@@ -741,10 +741,10 @@ class HilbertSpace(
     ###################################################################################
     # HilbertSpace: energy spectrum
     ##################################################################################
-    def cuoperator_to_array(operator):
-        if type(operator) != qt.Qobj:
-            operator = qt.Qobj(operator)
-        return operator.data
+    # def cuoperator_to_array(cuoperator):
+    #     array = cuoperator.full()
+    #     # array = cuoperator.data.to_array()
+    #     return array
 
     def eigenvals(
         self,
