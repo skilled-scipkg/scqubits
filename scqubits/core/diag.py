@@ -672,10 +672,10 @@ def esys_jax_dense(
     )
     return evals, evecs
 
-# def cuquantum_converter:
-#     if not qobj:
-#         qt.Qobj(m)
-#     m = CuQobjEvo(matrix).operator
+# def cuquantum_converter(matrix):
+#     if type(matrix) != qutip.core.qobj.Qobj:
+#         matrix = Qobj(matrix)
+#     return qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
 
 def esys_cuquantum(
     matrix: Union[Qobj], evals_count: int, **kwargs
