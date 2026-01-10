@@ -861,6 +861,7 @@ class HilbertSpace(
                 ),
             )
 
+        #### we need something like this for cuquantum.densitymat.DensePureState
         evecs = evecs.view(scqubits.io_utils.fileio_qutip.QutipEigenstates)
 
         return evals, evecs
