@@ -426,7 +426,7 @@ class SpectrumLookupMixin(MixinCompatible):
             dressed energy
         """
         param_indices_tuple = self.set_npindextuple(param_indices)
-        energies = self["evals"][param_indices_tuple + (dressed_index,)]
+        energies = copy(self["evals"][param_indices_tuple + (dressed_index,)])
         if subtract_ground:
             energies -= self["evals"][param_indices_tuple + (0,)]
         return energies
