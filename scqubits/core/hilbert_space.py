@@ -677,6 +677,8 @@ class HilbertSpace(
             num_evals = BEs_count
 
         evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
+        # if self.evals_method == "evals_cuquantum", we raise an error and ask user to use BE and set BEs_count below #value#
+
         # The following workaround ensures that eigenvectors maintain QutipEigenstates
         # view when getting placed inside an outer array
         evecs_wrapped = np.empty(shape=1, dtype=object)
@@ -861,7 +863,6 @@ class HilbertSpace(
                 ),
             )
 
-        #### we need something like this for cuquantum.densitymat.DensePureState
         evecs = evecs.view(scqubits.io_utils.fileio_qutip.QutipEigenstates)
 
         return evals, evecs

@@ -705,11 +705,16 @@ def esys_cuquantum(
         max_buffer_ratio=5,
         max_restarts=20
     )
+    # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
 
     spectrum = cuquantum.densitymat.OperatorSpectrumSolver(m, "SA", True, config)
     spectrum.prepare(ctx, init_state, max_num_eigvals=max_num_eigvals)
     result = spectrum.compute(0.0, None, (init_state,)*max_num_eigvals, 1e-10)
     evals, evecs = result.evals, result.evecs
+    # evecs = []
+    # for evec in result.evecs:
+    #     evecs.append(evec.view().flatten())
+    # evecs = cupy.array(evecs) should
     return evals, evecs
 
 def evals_cuquantum(
