@@ -678,8 +678,8 @@ def esys_jax_dense(
 #     return qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
 
 def esys_cuquantum(
-    matrix: Union[Qobj], evals_count: int, **kwargs
-) -> Union[Tuple[ndarray, ndarray], Tuple[ndarray, ndarray]]:
+    matrix: Qobj, evals_count: int, **kwargs
+) -> Tuple[ndarray, ndarray]:
     #### cuquantum is only recommended inputs to be sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
     try:
         import qutip_cuquantum, cuquantum.densitymat, cupy
@@ -700,22 +700,36 @@ def esys_cuquantum(
     norm = init_state.norm()
     init_state.inplace_scale(1.0 / cupy.sqrt(norm))
 
+    min_krylov_block_size = 1
+    max_buffer_ratio = 5
+    max_restarts = 20
+
     config = cuquantum.densitymat.OperatorSpectrumConfig(
-        min_krylov_block_size=1,
-        max_buffer_ratio=5,
-        max_restarts=20
+        min_krylov_block_size=min_krylov_block_size,
+        max_buffer_ratio=max_buffer_ratio,
+        max_restarts=max_restarts
     )
+
+    if min_krylov_block_size*max_buffer_ratio*max_num_eigvals > hilbert_vol/2:
+        allowed_num_eigvals = int(hilbert_vol/2 / (min_krylov_block_size*max_buffer_ratio)) - 1
+        raise ValueError(f"Too many eigenvalues requested. Maximum number of eigenvalues allowed is {allowed_num_eigvals}. Reduce min_krylov_block_size, max_buffer_ratio, or increase hilbert_vol.")
     # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
+    #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues
 
     spectrum = cuquantum.densitymat.OperatorSpectrumSolver(m, "SA", True, config)
     spectrum.prepare(ctx, init_state, max_num_eigvals=max_num_eigvals)
     result = spectrum.compute(0.0, None, (init_state,)*max_num_eigvals, 1e-10)
     evals, evecs = result.evals, result.evecs
-    # evecs = []
-    # for evec in result.evecs:
-    #     evecs.append(evec.view().flatten())
-    # evecs = cupy.array(evecs) should
-    return evals, evecs
+
+    #### convert evecs from cuquantum.DensePureState to cupy array
+    #### Should we return evecs as cupy array or qutip.Qobj?
+    evecs = np.empty((max_num_eigvals,), dtype=object)
+    evecs_qobj = np.empty((max_num_eigvals,), dtype=object)
+    for i, evec in enumerate(result.evecs):
+        evecs[i] = evec.view().flatten().get()  # each eigenvector is a flattened array of shape (hilbert_vol,)
+        evecs_qobj[i] = Qobj(evecs[i],dims=[hilbert_space_dims, [1]])
+        # evecs[i] = evec.view()[:,:,0]   # each eigenvector is an array of shape (hilbert_space_dims[0], hilbert_space_dims[1])
+    return evals, evecs_qobj
 
 def evals_cuquantum(
     matrix: Union[Qobj], evals_count: int, **kwargs

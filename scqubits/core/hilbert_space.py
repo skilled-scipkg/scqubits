@@ -676,8 +676,11 @@ class HilbertSpace(
         else:
             num_evals = BEs_count
 
-        evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
         # if self.evals_method == "evals_cuquantum", we raise an error and ask user to use BE and set BEs_count below #value#
+        if self.evals_method == "evals_cuquantum" and (ordering == "DE" or ordering == "LX"):
+            raise ValueError("cuQuantum backend is activated. Please use Bare Energy ordering and set BEs_count below the allowed value.")
+        evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
+
 
         # The following workaround ensures that eigenvectors maintain QutipEigenstates
         # view when getting placed inside an outer array
