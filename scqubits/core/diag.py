@@ -700,9 +700,9 @@ def esys_cuquantum(
     norm = init_state.norm()
     init_state.inplace_scale(1.0 / cupy.sqrt(norm))
 
-    min_krylov_block_size = 1
-    max_buffer_ratio = 5
-    max_restarts = 20
+    min_krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE    
+    max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
+    max_restarts = settings.CUQUANTUM_MAX_RESTARTS
 
     config = cuquantum.densitymat.OperatorSpectrumConfig(
         min_krylov_block_size=min_krylov_block_size,

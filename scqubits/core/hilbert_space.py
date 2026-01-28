@@ -54,6 +54,7 @@ import scqubits.utils.spectrum_utils as spec_utils
 from scqubits.core.namedslots_array import NamedSlotsNdarray, Parameters
 from scqubits.core.storage import SpectrumData
 from scqubits.io_utils.fileio_qutip import QutipEigenstates
+import warnings
 
 
 if settings.IN_IPYTHON:
@@ -678,7 +679,10 @@ class HilbertSpace(
 
         # if self.evals_method == "evals_cuquantum", we raise an error and ask user to use BE and set BEs_count below #value#
         if self.evals_method == "evals_cuquantum" and (ordering == "DE" or ordering == "LX"):
-            raise ValueError("cuQuantum backend is activated. Please use Bare Energy ordering and set BEs_count below the allowed value.")
+            krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE
+            max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
+            allowed_num_eigvals = int(self.dimension/2 / (krylov_block_size*max_buffer_ratio)) - 1
+            raise ValueError(f"cuQuantum backend is activated. Please use Bare Energy ordering and set BEs_count below the allowed value: {allowed_num_eigvals}.")
         evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
 
 
@@ -774,7 +778,8 @@ class HilbertSpace(
             hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
             if self.evals_method != "evals_cuquantum":
                 self.evals_method = "evals_cuquantum"
-                print("Warning: Detected qutip-cuquantum backend activated. Setting evals_method to evals_cuquantum.")
+
+                warnings.warn("Detected qutip-cuquantum backend activated. Setting evals_method to evals_cuquantum.", UserWarning)
                 ##### Should we provide user options to use non-cuquantum methods when backend is activated?
                 ##### Convert evals_method back to original
         elif self.evals_method == "evals_cuquantum":
@@ -836,7 +841,7 @@ class HilbertSpace(
             hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
             if self.esys_method != "esys_cuquantum":
                 self.esys_method = "esys_cuquantum"
-                print("Warning: Detected qutip-cuquantum backend activated. Setting esys_method to esys_cuquantum.")
+                warnings.warn("Detected qutip-cuquantum backend activated. Setting esys_method to esys_cuquantum.", UserWarning)
         elif self.esys_method == "esys_cuquantum":
             print("backend deactivated, import cuQuantum and activate backend")
             try:
