@@ -680,12 +680,11 @@ def esys_jax_dense(
 def esys_cuquantum(
     matrix: Qobj, evals_count: int, **kwargs
 ) -> Tuple[ndarray, ndarray]:
-    #### cuquantum is only recommended inputs to be sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
+    #### cuquantum is only recommended when inputs are sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
     try:
         import qutip_cuquantum, cuquantum.densitymat, cupy
     except:
         raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
-    print(matrix.data)
     ctx = cuquantum.densitymat.WorkStream()
     m = qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
     hilbert_space_dims = matrix.dims[0]
@@ -729,7 +728,7 @@ def esys_cuquantum(
         evecs[i] = evec.view().flatten().get()  # each eigenvector is a flattened array of shape (hilbert_vol,)
         evecs_qobj[i] = Qobj(evecs[i],dims=[hilbert_space_dims, [1]])
         # evecs[i] = evec.view()[:,:,0]   # each eigenvector is an array of shape (hilbert_space_dims[0], hilbert_space_dims[1])
-    return evals, evecs_qobj
+    return evals.get(), evecs_qobj.view(QutipEigenstates)
 
 def evals_cuquantum(
     matrix: Union[Qobj], evals_count: int, **kwargs
