@@ -693,11 +693,14 @@ def esys_cuquantum(
     max_num_eigvals = evals_count
     hilbert_vol = np.prod(hilbert_space_dims)
 
-    init_state = cuquantum.densitymat.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
-    init_state.allocate_storage()
-    init_state.storage[:] = cupy.random.randn(hilbert_vol * batch_size)
-    norm = init_state.norm()
-    init_state.inplace_scale(1.0 / cupy.sqrt(norm))
+    init_states = []
+    for i in range(max_num_eigvals):
+        init_state = cuquantum.densitymat.DensePupyreState(ctx, hilbert_space_dims, batch_size, "complex128")
+        init_state.allocate_storage()
+        init_state.storage[:] = cupy.random.randn(hilbert_vol * batch_size)
+        norm = init_state.norm()
+        init_state.inplace_scale(1.0 / cupy.sqrt(norm))
+        init_states.append(init_state)
 
     min_krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE    
     max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
@@ -716,8 +719,8 @@ def esys_cuquantum(
     #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues
 
     spectrum = cuquantum.densitymat.OperatorSpectrumSolver(m, "SA", True, config)
-    spectrum.prepare(ctx, init_state, max_num_eigvals=max_num_eigvals)
-    result = spectrum.compute(0.0, None, (init_state,)*max_num_eigvals, 1e-10)
+    spectrum.prepare(ctx, init_states[0], max_num_eigvals=max_num_eigvals)
+    result = spectrum.compute(0.0, None, init_states, 1e-10)
     evals, evecs = result.evals, result.evecs
 
     #### convert evecs from cuquantum.DensePureState to cupy array
