@@ -695,7 +695,7 @@ def esys_cuquantum(
 
     init_states = []
     for i in range(max_num_eigvals):
-        init_state = cuquantum.densitymat.DensePupyreState(ctx, hilbert_space_dims, batch_size, "complex128")
+        init_state = cuquantum.densitymat.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
         init_state.allocate_storage()
         init_state.storage[:] = cupy.random.randn(hilbert_vol * batch_size)
         norm = init_state.norm()
