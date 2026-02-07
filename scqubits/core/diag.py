@@ -679,7 +679,7 @@ def esys_jax_dense(
 
 def esys_cuquantum(
     matrix: Qobj, evals_count: int, **kwargs
-) -> Tuple[ndarray, ndarray]:
+) -> Tuple[ndarray, QutipEigenstates]:
     #### cuquantum is only recommended when inputs are sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
     try:
         import qutip_cuquantum, cuquantum.densitymat, cupy
@@ -723,15 +723,10 @@ def esys_cuquantum(
     result = spectrum.compute(0.0, None, init_states, 1e-10)
     evals, evecs = result.evals, result.evecs
 
-    #### convert evecs from cuquantum.DensePureState to cupy array
-    #### Should we return evecs as cupy array or qutip.Qobj?
     evecs = np.empty((max_num_eigvals,), dtype=object)
-    evecs_qobj = np.empty((max_num_eigvals,), dtype=object)
     for i, evec in enumerate(result.evecs):
-        evecs[i] = evec.view().flatten().get()  # each eigenvector is a flattened array of shape (hilbert_vol,)
-        evecs_qobj[i] = Qobj(evecs[i],dims=[hilbert_space_dims, [1]])
-        # evecs[i] = evec.view()[:,:,0]   # each eigenvector is an array of shape (hilbert_space_dims[0], hilbert_space_dims[1])
-    return evals.get(), evecs_qobj.view(QutipEigenstates)
+        evecs[i] = Qobj(qutip_cuquantum.state.CuState_from_Dense(evec))  # each eigenvector is a Qobj with custate data type
+    return evals.get(), evecs.view(QutipEigenstates)
 
 def evals_cuquantum(
     matrix: Union[Qobj], evals_count: int, **kwargs
