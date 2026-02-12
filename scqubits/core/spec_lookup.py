@@ -958,12 +958,6 @@ class SpectrumLookupMixin(MixinCompatible):
 
                 # state vector
                 prev_state = evecs[prev_drs_idx]
-                print(type(prev_state))
-                print(prev_state.dims)
-                print(prev_state.data)
-                print(type(excite_op_list[subsys_idx]))
-                print(excite_op_list[subsys_idx].dims)
-                print(excite_op_list[subsys_idx].data)
                 excited_state = excite_op_list[subsys_idx] * prev_state
                 excited_state = excited_state.unit()
 

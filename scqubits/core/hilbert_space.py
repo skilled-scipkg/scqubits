@@ -685,7 +685,6 @@ class HilbertSpace(
             max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
             allowed_num_eigvals = int(self.dimension/2 / (krylov_block_size*max_buffer_ratio)) - 1
             raise ValueError(f"Cannot use cuQuantum eigensolver with DE or LX ordering. Please use Bare Energy ordering and set BEs_count below the allowed value: {allowed_num_eigvals}.")
-        print("directed to eigensys")
         evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
 
 

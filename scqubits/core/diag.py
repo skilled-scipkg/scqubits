@@ -724,8 +724,9 @@ def esys_cuquantum(
     evals, evecs = result.evals, result.evecs
 
     evecs = np.empty((max_num_eigvals,), dtype=object)
-    for i, evec in enumerate(result.evecs):
-        evecs[i] = Qobj(qutip_cuquantum.state.CuState_from_Dense(evec))  # each eigenvector is a Qobj with custate data type
+    with qutip_cuquantum.CuQuantumBackend(ctx):
+        for i, evec in enumerate(result.evecs):
+            evecs[i] = Qobj(qutip_cuquantum.state.CuState(evec),dims=[hilbert_space_dims,[1]])  # each eigenvector is a Qobj with custate data type
     return evals.get(), evecs.view(QutipEigenstates)
 
 def evals_cuquantum(
