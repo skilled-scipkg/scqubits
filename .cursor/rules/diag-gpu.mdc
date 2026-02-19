@@ -1,0 +1,29 @@
+---
+description: GPU diagonalization backends in scqubits
+globs: scqubits/core/diag.py
+alwaysApply: false
+---
+
+# GPU Diagonalization
+
+## Available GPU Methods (in DIAG_METHODS)
+- `evals_cupy_dense` / `esys_cupy_dense` — CuPy dense eigsh on GPU
+- `evals_cupy_sparse` / `esys_cupy_sparse` — CuPy sparse eigsh on GPU
+- `evals_jax_dense` / `esys_jax_dense` — JAX dense eigh
+- `evals_cuquantum` / `esys_cuquantum` — cuQuantum Krylov eigensolver
+
+## cuQuantum Eigensolver
+Uses `cuquantum.densitymat.OperatorSpectrumSolver` (Krylov-based):
+1. Wraps Hamiltonian Qobj → `CuQobjEvo` → cuQuantum `Operator`
+2. Creates random `DensePureState` initial vectors
+3. Configures via `OperatorSpectrumConfig` (settings: `CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE`, `CUQUANTUM_MAX_BUFFER_RATIO`, `CUQUANTUM_MAX_RESTARTS`)
+4. Returns eigenvectors as `Qobj` with `CuState` data type
+
+## Constraint
+`min_krylov_block_size * max_buffer_ratio * evals_count` must be < `hilbert_vol / 2`, otherwise raises `ValueError`.
+
+## Usage
+```python
+hilbert_space.eigenvals(evals_count=10, evals_method="evals_cuquantum")
+hilbert_space.eigensys(evals_count=10, esys_method="esys_cuquantum")
+```

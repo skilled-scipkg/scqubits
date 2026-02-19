@@ -1,0 +1,25 @@
+---
+description: scqubits project architecture and conventions
+alwaysApply: true
+---
+
+# scqubits Project Context
+
+Superconducting qubit simulation library. Python >=3.9, BSD license.
+
+## Class Hierarchy
+- `QuantumSystem` (ABC) → `QubitBaseClass` → `QubitBaseClass1d` → Transmon, Fluxonium
+- `QuantumSystem` → GenericQubit, Oscillator, KerrOscillator, Circuit
+- All provide: `hamiltonian()`, `eigenvals()`, `eigensys()`, `hilbertdim()`, `truncated_dim`
+
+## Key Modules
+- `core/hilbert_space.py` — `HilbertSpace` composites qubits+oscillators via QuTiP tensor products
+- `core/diag.py` — Pluggable eigensolvers: scipy, PRIMME, CuPy, JAX, cuQuantum. All in `DIAG_METHODS` dict.
+- `core/param_sweep.py` — `ParameterSweep` for multi-dim parameter scans with caching
+- `core/noise.py` — T1/Tphi decoherence calculations
+- `core/central_dispatch.py` — Event system for propagating parameter changes
+- `settings.py` — Global config: `NUM_CPUS`, `MULTIPROC`, `CUQUANTUM_*` Krylov params
+
+## Dependencies
+Core: numpy, scipy, qutip, matplotlib, sympy, pathos
+GPU (optional): cupy, jax, cuquantum + qutip-cuquantum

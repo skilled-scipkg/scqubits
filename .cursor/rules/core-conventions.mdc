@@ -1,0 +1,32 @@
+---
+description: Conventions for scqubits core source code
+globs: scqubits/core/**/*.py
+alwaysApply: false
+---
+
+# Core Module Conventions
+
+## Qubit Classes
+- Inherit from `QubitBaseClass` (or `QubitBaseClass1d` for 1D qubits)
+- Must implement `hamiltonian()` returning ndarray, sparse matrix, or Qobj
+- Diag method selection via `evals_method`/`esys_method` attributes (string key into `DIAG_METHODS`)
+- Use `DispatchClient` mixin for event-driven parameter change propagation
+- Use `descriptors.WatchedProperty` for parameters that trigger re-diagonalization
+
+## Diagonalization (diag.py)
+- All solvers follow signature: `func(matrix, evals_count, **kwargs) → evals` or `→ (evals, evecs)`
+- Matrix input can be ndarray, csc_matrix, or Qobj — use `_cast_matrix()` to normalize
+- Register new methods in `DIAG_METHODS` dict at bottom of file
+- Eigenvectors returned as `QutipEigenstates` (numpy object array of Qobj)
+- `esys_cuquantum` returns eigenvectors with `CuState` data type for GPU-accelerated downstream ops
+
+## HilbertSpace
+- Subsystems stored as list; accessed via `osc_subsys_list`, `qbt_subsys_list`
+- Interactions added via `add_interaction()` — either `InteractionTerm` or `InteractionTermStr`
+- Full Hamiltonian = tensor sum of subsystem Hamiltonians + interaction terms
+- Uses QuTiP `Qobj` for tensor product space operations
+
+## Event System
+- `central_dispatch.py`: events propagate parameter changes through the object graph
+- Events: `QUANTUMSYSTEM_UPDATE`, `HILBERTSPACE_UPDATE`, `PARAMETERSWEEP_UPDATE`
+- Classes use `DispatchClient` mixin to register/emit
