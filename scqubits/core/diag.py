@@ -685,7 +685,9 @@ def esys_cuquantum(
         import qutip_cuquantum, cuquantum.densitymat, cupy
     except:
         raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
-    ctx = cuquantum.densitymat.WorkStream()
+    ctx = q.settings.cuDensity["ctx"]
+    if ctx is None:
+        ctx = cuquantum.densitymat.WorkStream()
     m = qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
     hilbert_space_dims = matrix.dims[0]
 
@@ -713,7 +715,7 @@ def esys_cuquantum(
     )
 
     if min_krylov_block_size*max_buffer_ratio*max_num_eigvals > hilbert_vol/2:
-        allowed_num_eigvals = int(hilbert_vol/2 / (min_krylov_block_size*max_buffer_ratio)) - 1
+        allowed_num_eigvals = int(np.ceil(hilbert_vol/2 / (min_krylov_block_size*max_buffer_ratio)) - 1) 
         raise ValueError(f"Too many eigenvalues requested. Maximum number of eigenvalues allowed is {allowed_num_eigvals}. Reduce min_krylov_block_size, max_buffer_ratio, or increase hilbert_vol.")
     # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
     #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues

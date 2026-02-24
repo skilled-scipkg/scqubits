@@ -683,7 +683,7 @@ class HilbertSpace(
         if (self.esys_method == "esys_cuquantum" or qt.settings.core["default_dtype"] == "cuDensity") and (ordering == "DE" or ordering == "LX"):
             krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE
             max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
-            allowed_num_eigvals = int(self.dimension/2 / (krylov_block_size*max_buffer_ratio)) - 1
+            allowed_num_eigvals = int(np.ceil(self.dimension/2 / (krylov_block_size*max_buffer_ratio)) - 1) 
             raise ValueError(f"Cannot use cuQuantum eigensolver with DE or LX ordering. Please use Bare Energy ordering and set BEs_count below the allowed value: {allowed_num_eigvals}.")
         evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
 
@@ -776,6 +776,7 @@ class HilbertSpace(
         """
         
         if qt.settings.core["default_dtype"] == "cuDensity":
+            #### grab context from the user's environment
             print("backend activated, use cuQuantum")
             hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
             if self.evals_method != "evals_cuquantum":
