@@ -672,6 +672,14 @@ class HilbertSpace(
         else:
             num_evals = BEs_count
 
+        # if qt.settings.core["default_dtype"] == "cuDensity":
+        #     raise ValueError("Cuquantum backend is activated. CuOperator does not support rectangular matices which are required for branch analysis. Please deactivate cuquantum backend and use default backend.")
+        # if self.esys_method == "esys_cuquantum", we raise an error and ask user to use BE and set BEs_count below #value#
+        if (self.esys_method == "esys_cuquantum" or qt.settings.core["default_dtype"] == "cuDensity") and (ordering == "DE" or ordering == "LX"):
+            krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE
+            max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
+            allowed_num_eigvals = int(np.ceil(self.dimension/2 / (krylov_block_size*max_buffer_ratio)) - 1) 
+            raise ValueError(f"Cannot use cuQuantum eigensolver with DE or LX ordering. Please use Bare Energy ordering and set BEs_count below the allowed value: {allowed_num_eigvals}.")
         evals, evecs = self.eigensys(evals_count=num_evals, bare_esys=bare_esys_dict)
         # The following workaround ensures that eigenvectors maintain QutipEigenstates
         # view when getting placed inside an outer array
@@ -754,10 +762,29 @@ class HilbertSpace(
             optionally, the bare eigensystems for each subsystem can be provided to
             speed up computation; these are provided in dict form via <subsys>: esys
         """
-        # hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
-        # return hamiltonian_mat.eigenenergies(eigvals=evals_count)
+        
+        if qt.settings.core["default_dtype"] == "cuDensity":
+            #### grab context from the user's environment
+            print("backend activated, use cuQuantum")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+            if self.evals_method != "evals_cuquantum":
+                self.evals_method = "evals_cuquantum"
 
-        hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)  # type:ignore
+                warnings.warn("Detected qutip-cuquantum backend activated. Setting evals_method to evals_cuquantum.", UserWarning)
+                ##### Should we provide user options to use non-cuquantum methods when backend is activated?
+                ##### Should we convert evals_method back to original after diagonalization is done?
+        elif self.evals_method == "evals_cuquantum":
+            print("backend deactivated, import cuQuantum and activate backend")
+            try:
+                import qutip_cuquantum, cuquantum.densitymat
+            except:
+                raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
+            ctx = cuquantum.densitymat.WorkStream()
+            with qutip_cuquantum.CuQuantumBackend(ctx):
+                hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
+        else:
+            print("backend deactivated, use default backend")
+            hamiltonian_mat = self.hamiltonian(bare_esys=bare_esys)
 
         if not hasattr(self, "evals_method") or self.evals_method is None:
             evals = hamiltonian_mat.eigenenergies(eigvals=evals_count)
