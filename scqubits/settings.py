@@ -172,10 +172,10 @@ OVERLAP_THRESHOLD = 0.5
 SYM_INVERSION_MAX_NODES = 3
 
 try:
-    import cuquantum, qutip_cuquantum
-    CUQUANTUM_INSTALLED = True
+    import cuquantum.densitymat as cuDM
+    cuDM_WORKSTREAM = cuDM.WorkStream()
 except:
-    CUQUANTUM_INSTALLED = False
+    cuDM_WORKSTREAM = None
 
 CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE = 1
 CUQUANTUM_MAX_BUFFER_RATIO = 5

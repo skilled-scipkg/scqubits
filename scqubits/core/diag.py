@@ -682,13 +682,15 @@ def esys_cuquantum(
 ) -> Tuple[ndarray, QutipEigenstates]:
     #### cuquantum is only recommended when inputs are sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
     try:
-        import qutip_cuquantum, cuquantum.densitymat, cupy
+        import qutip_cuquantum as qcu
+        import cuquantum.densitymat as cuDM
+        import cupy as cp
     except:
         raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
-    ctx = q.settings.cuDensity["ctx"]
+    ctx = settings.cuDM_WORKSTREAM
     if ctx is None:
-        ctx = cuquantum.densitymat.WorkStream()
-    m = qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator
+        raise ValueError("cuDM_WORKSTREAM is not set. Please set it in settings.py.")
+    m = qcu.CuQobjEvo(QobjEvo(matrix)).operator
     hilbert_space_dims = matrix.dims[0]
 
     batch_size = 1
@@ -697,18 +699,18 @@ def esys_cuquantum(
 
     init_states = []
     for i in range(max_num_eigvals):
-        init_state = cuquantum.densitymat.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
+        init_state = cuDM.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
         init_state.allocate_storage()
-        init_state.storage[:] = cupy.random.randn(hilbert_vol * batch_size)
+        init_state.storage[:] = cp.random.randn(hilbert_vol * batch_size)
         norm = init_state.norm()
-        init_state.inplace_scale(1.0 / cupy.sqrt(norm))
+        init_state.inplace_scale(1.0 / cp.sqrt(norm))
         init_states.append(init_state)
 
     min_krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE    
     max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
     max_restarts = settings.CUQUANTUM_MAX_RESTARTS
 
-    config = cuquantum.densitymat.OperatorSpectrumConfig(
+    config = cuDM.OperatorSpectrumConfig(
         min_krylov_block_size=min_krylov_block_size,
         max_buffer_ratio=max_buffer_ratio,
         max_restarts=max_restarts
@@ -720,24 +722,24 @@ def esys_cuquantum(
     # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
     #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues
 
-    spectrum = cuquantum.densitymat.OperatorSpectrumSolver(m, "SA", True, config)
+    spectrum = cuDM.OperatorSpectrumSolver(m, "SA", True, config)
     spectrum.prepare(ctx, init_states[0], max_num_eigvals=max_num_eigvals)
     result = spectrum.compute(0.0, None, init_states, 1e-10)
-    evals, evecs = result.evals, result.evecs
 
+    evals = result.evals[:,0].get()
     evecs = np.empty((max_num_eigvals,), dtype=object)
 
-    # multivation: returning eigenvectors as Qobjs with CuState data type can help solve the matrix-vector multiplication bug in generate_lookup.
-    with qutip_cuquantum.CuQuantumBackend(ctx):
+    # motivation: returning eigenvectors as Qobjs with CuState data type can help solve the matrix-vector multiplication bug in generate_lookup.
+    with qcu.CuQuantumBackend(ctx):
         for i, evec in enumerate(result.evecs):
-            evecs[i] = Qobj(qutip_cuquantum.state.CuState(evec),dims=[hilbert_space_dims,[1]])  # each eigenvector is a Qobj with custate data type
+            evecs[i] = Qobj(qcu.state.CuState(evec),dims=[hilbert_space_dims,[1]])  # each eigenvector is a Qobj with custate data type
 
     # Replace the above with the following to return eigenvectors as Qobjs with Dense data type, which will cause the matrix-vector multiplication bug in generate_lookup.
     # In other scqubits eigensolvers, we ofter return eigenvectors as Qobjs with Dense data type.
     # for i, evec in enumerate(result.evecs):
-    #     evecs[i] = Qobj(qutip_cuquantum.state.CuState(evec).to_array(),dims=[hilbert_space_dims,[1]]) # each eigenvector is a Qobj with dense data type
+    #     evecs[i] = Qobj(qcu.state.CuState(evec).to_array(),dims=[hilbert_space_dims,[1]]) # each eigenvector is a Qobj with dense data type
 
-    return evals.get(), evecs.view(QutipEigenstates)
+    return evals, evecs.view(QutipEigenstates)
 
 def evals_cuquantum(
     matrix: Union[Qobj], evals_count: int, **kwargs
