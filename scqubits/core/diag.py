@@ -672,6 +672,79 @@ def esys_jax_dense(
     )
     return evals, evecs
 
+# def cuquantum_converter(matrix):
+#     if type(matrix) != qutip.core.qobj.Qobj:
+#         matrix = Qobj(matrix)
+#     return qutip_cuquantum.CuQobjEvo(QobjEvo(matrix)).operator 
+
+def esys_cuquantum(
+    matrix: Qobj, evals_count: int, **kwargs
+) -> Tuple[ndarray, QutipEigenstates]:
+    #### cuquantum is only recommended when inputs are sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
+    try:
+        import qutip_cuquantum as qcu
+        import cuquantum.densitymat as cuDM
+        import cupy as cp
+    except:
+        raise ImportError("Package cuquantum or qutip-cuquantum is not installed.")
+    ctx = settings.cuDM_WORKSTREAM
+    if ctx is None:
+        raise ValueError("cuDM_WORKSTREAM is not set. Please set it in settings.py.")
+    m = qcu.CuQobjEvo(q.QobjEvo(matrix)).operator
+    hilbert_space_dims = matrix.dims[0]
+
+    batch_size = 1
+    max_num_eigvals = evals_count
+    hilbert_vol = np.prod(hilbert_space_dims)
+
+    init_states = []
+    for i in range(max_num_eigvals):
+        init_state = cuDM.DensePureState(ctx, hilbert_space_dims, batch_size, "complex128")
+        init_state.allocate_storage()
+        init_state.storage[:] = cp.random.randn(hilbert_vol * batch_size)
+        norm = init_state.norm()
+        init_state.inplace_scale(1.0 / cp.sqrt(norm))
+        init_states.append(init_state)
+
+    min_krylov_block_size = settings.CUQUANTUM_MIN_KRYLOV_BLOCK_SIZE    
+    max_buffer_ratio = settings.CUQUANTUM_MAX_BUFFER_RATIO
+    max_restarts = settings.CUQUANTUM_MAX_RESTARTS
+
+    config = cuDM.OperatorSpectrumConfig(
+        min_krylov_block_size=min_krylov_block_size,
+        max_buffer_ratio=max_buffer_ratio,
+        max_restarts=max_restarts
+    )
+
+    if min_krylov_block_size*max_buffer_ratio*max_num_eigvals > hilbert_vol/2:
+        allowed_num_eigvals = int(np.ceil(hilbert_vol/2 / (min_krylov_block_size*max_buffer_ratio)) - 1) 
+        raise ValueError(f"Too many eigenvalues requested. Maximum number of eigenvalues allowed is {allowed_num_eigvals}. Reduce min_krylov_block_size, max_buffer_ratio, or increase hilbert_vol.")
+    # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
+    #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues
+
+    spectrum = cuDM.OperatorSpectrumSolver(m, "SA", True, config)
+    spectrum.prepare(ctx, init_states[0], max_num_eigvals=max_num_eigvals)
+    result = spectrum.compute(0.0, None, init_states, 1e-10)
+
+    evals = result.evals[:,0].get()
+    evecs = np.empty((max_num_eigvals,), dtype=object)
+
+    # motivation: returning eigenvectors as Qobjs with CuState data type can help solve the matrix-vector multiplication bug in generate_lookup.
+    with qcu.CuQuantumBackend(ctx):
+        for i, evec in enumerate(result.evecs):
+            evecs[i] = Qobj(qcu.state.CuState(evec),dims=[hilbert_space_dims,[1]])  # each eigenvector is a Qobj with custate data type
+
+    # Replace the above with the following to return eigenvectors as Qobjs with Dense data type, which will cause the matrix-vector multiplication bug in generate_lookup.
+    # In other scqubits eigensolvers, we ofter return eigenvectors as Qobjs with Dense data type.
+    # for i, evec in enumerate(result.evecs):
+    #     evecs[i] = Qobj(qcu.state.CuState(evec).to_array(),dims=[hilbert_space_dims,[1]]) # each eigenvector is a Qobj with dense data type
+
+    return evals, evecs.view(QutipEigenstates)
+
+def evals_cuquantum(
+    matrix: Union[Qobj], evals_count: int, **kwargs
+) -> ndarray:
+    return esys_cuquantum(matrix, evals_count, **kwargs)[0]
 
 # Default values of various noise constants and parameters.
 DIAG_METHODS = {
@@ -747,4 +820,7 @@ DIAG_METHODS = {
     # jax dense
     "evals_jax_dense": evals_jax_dense,
     "esys_jax_dense": esys_jax_dense,
+    # cuquantum
+    "esys_cuquantum": esys_cuquantum,
+    "evals_cuquantum": evals_cuquantum,
 }
