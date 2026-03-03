@@ -345,6 +345,7 @@ def convert_operator_to_qobj(
 ) -> qt.Qobj:
     if isinstance(operator, qt.Qobj):
         operator = Qobj_to_scipy_csc_matrix(operator)
+        # return operator
     if isinstance(operator, str):
         return convert_opstring_to_qobj(operator, subsystem, evecs)
     elif isinstance(operator, (np.ndarray, csc_matrix, csr_matrix, dia_matrix)):
