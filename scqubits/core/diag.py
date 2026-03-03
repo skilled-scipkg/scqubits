@@ -680,7 +680,6 @@ def esys_jax_dense(
 def esys_cuquantum(
     matrix: Qobj, evals_count: int, **kwargs
 ) -> Tuple[ndarray, QutipEigenstates]:
-    #### cuquantum is only recommended when inputs are sparse matrices with qutip.Qobj (cuoperator) type. Should we provide a converter function for dense matrices or other types?
     try:
         import qutip_cuquantum as qcu
         import cuquantum.densitymat as cuDM
@@ -719,8 +718,6 @@ def esys_cuquantum(
     if min_krylov_block_size*max_buffer_ratio*max_num_eigvals > hilbert_vol/2:
         allowed_num_eigvals = int(np.ceil(hilbert_vol/2 / (min_krylov_block_size*max_buffer_ratio)) - 1) 
         raise ValueError(f"Too many eigenvalues requested. Maximum number of eigenvalues allowed is {allowed_num_eigvals}. Reduce min_krylov_block_size, max_buffer_ratio, or increase hilbert_vol.")
-    # if min_krylov_block_size*max_buffer_ratio*evals_count > hilbert_vol/2, we raise an error too many eigenvalues requested
-    #### An alternative is we set max_num_eigvals to the allowed number of eigenvalues and return the allowed number of eigenvalues
 
     spectrum = cuDM.OperatorSpectrumSolver(m, "SA", True, config)
     spectrum.prepare(ctx, init_states[0], max_num_eigvals=max_num_eigvals)
@@ -729,15 +726,9 @@ def esys_cuquantum(
     evals = result.evals[:,0].get()
     evecs = np.empty((max_num_eigvals,), dtype=object)
 
-    # motivation: returning eigenvectors as Qobjs with CuState data type can help solve the matrix-vector multiplication bug in generate_lookup.
     with qcu.CuQuantumBackend(ctx):
         for i, evec in enumerate(result.evecs):
-            evecs[i] = Qobj(qcu.state.CuState(evec),dims=[hilbert_space_dims,[1]])  # each eigenvector is a Qobj with custate data type
-
-    # Replace the above with the following to return eigenvectors as Qobjs with Dense data type, which will cause the matrix-vector multiplication bug in generate_lookup.
-    # In other scqubits eigensolvers, we ofter return eigenvectors as Qobjs with Dense data type.
-    # for i, evec in enumerate(result.evecs):
-    #     evecs[i] = Qobj(qcu.state.CuState(evec).to_array(),dims=[hilbert_space_dims,[1]]) # each eigenvector is a Qobj with dense data type
+            evecs[i] = Qobj(qcu.state.CuState(evec).to_array(),dims=[hilbert_space_dims,[1]]) 
 
     return evals, evecs.view(QutipEigenstates)
 
