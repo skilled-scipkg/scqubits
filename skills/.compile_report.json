@@ -1,0 +1,192 @@
+{
+  "compile_memory_path": "skills/.evidence/memory.md",
+  "compiled_package_id": "scqubits",
+  "evidence": {
+    "core_skills": [
+      "scqubits-build-and-install"
+    ],
+    "evidence_dir": "skills/.evidence",
+    "files": [
+      "skills/.evidence/scqubits-build-and-install.md"
+    ]
+  },
+  "generation": {
+    "docs_only": false,
+    "generator_script": "sci-skills-generator/scripts/generate_skills_folder.py",
+    "max_skills": 30,
+    "return_code": 0,
+    "status": "ok"
+  },
+  "mode": "compile",
+  "pass_scope_diffs": {
+    "pass_2": {
+      "added": [],
+      "changed": [
+        "skills/scqubits-build-and-install/SKILL.md",
+        "skills/scqubits-build-and-install/references/doc_map.md",
+        "skills/scqubits-build-and-install/references/source_map.md",
+        "skills/scqubits-index/SKILL.md"
+      ],
+      "deleted": [],
+      "modified": [
+        "skills/scqubits-build-and-install/SKILL.md",
+        "skills/scqubits-build-and-install/references/doc_map.md",
+        "skills/scqubits-build-and-install/references/source_map.md",
+        "skills/scqubits-index/SKILL.md"
+      ]
+    },
+    "pass_3": {
+      "added": [
+        "skills/.compile_report.json",
+        "skills/.evidence/memory.md",
+        "skills/.evidence/scqubits-advanced-simulation.md",
+        "skills/scqubits-advanced-simulation/SKILL.md",
+        "skills/scqubits-advanced-simulation/references/doc_map.md",
+        "skills/scqubits-advanced-simulation/references/source_map.md"
+      ],
+      "changed": [
+        "skills/.compile_report.json",
+        "skills/.evidence/manifest.json",
+        "skills/.evidence/memory.md",
+        "skills/.evidence/scqubits-advanced-simulation.md",
+        "skills/.evidence/scqubits-build-and-install.md",
+        "skills/.evidence/skill_plan.json",
+        "skills/scqubits-advanced-simulation/SKILL.md",
+        "skills/scqubits-advanced-simulation/references/doc_map.md",
+        "skills/scqubits-advanced-simulation/references/source_map.md",
+        "skills/scqubits-build-and-install/SKILL.md",
+        "skills/scqubits-build-and-install/references/doc_map.md",
+        "skills/scqubits-build-and-install/references/source_map.md",
+        "skills/scqubits-index/SKILL.md"
+      ],
+      "deleted": [],
+      "modified": [
+        "skills/.evidence/manifest.json",
+        "skills/.evidence/scqubits-build-and-install.md",
+        "skills/.evidence/skill_plan.json",
+        "skills/scqubits-build-and-install/SKILL.md",
+        "skills/scqubits-build-and-install/references/doc_map.md",
+        "skills/scqubits-build-and-install/references/source_map.md",
+        "skills/scqubits-index/SKILL.md"
+      ]
+    }
+  },
+  "passes": [
+    {
+      "pass": 1,
+      "return_code": 0,
+      "status": "ok"
+    },
+    {
+      "pass": 2,
+      "return_code": 0,
+      "status": "ok"
+    },
+    {
+      "pass": 3,
+      "return_code": 0,
+      "status": "ok"
+    }
+  ],
+  "profile": {
+    "docs_dirs": [
+      "."
+    ],
+    "docs_only": false,
+    "notes": [
+      "In-repo documentation is limited to top-level markdown (primarily README.md).",
+      "Primary docs and example notebooks are maintained in external repos (scqubits-doc, scqubits-examples).",
+      "Use scqubits/tests as executable behavior references during skill generation."
+    ],
+    "package_name": "scqubits",
+    "profile_path": "skills/.compile_profile.json",
+    "profile_source": "file",
+    "source_dirs": [
+      "scqubits"
+    ],
+    "test_dirs": [
+      "scqubits/tests"
+    ],
+    "tutorial_dirs": [],
+    "warnings": []
+  },
+  "project_root": "/mnt/home/taoeli/fermilink_repos/.fermilink-auto-compile/scqubits-scqubits",
+  "run_id": "compile_20260304T151418808235Z",
+  "skill_plan": {
+    "available_skill_ids": [
+      "scqubits-build-and-install",
+      "scqubits-index"
+    ],
+    "core_skill_ids": [
+      "scqubits-build-and-install"
+    ],
+    "deferred_gaps": [
+      "No local docs/tutorial tree; enrich from external scqubits-doc and scqubits-examples in later compile run.",
+      "Current generator auto-topic coverage is limited by README-only docs corpus."
+    ],
+    "goal": "Passes 2/3: generate deterministic baseline skills, then enrich and audit high-impact scqubits workflows.",
+    "mode": "compile",
+    "priority_skills": [
+      {
+        "action": "refresh",
+        "must_cover": [
+          "docs-first routing from README fallback",
+          "escalation path into source and tests",
+          "links to external docs/examples repos"
+        ],
+        "reason": "Router quality determines correct handoff across source-heavy topics in a docs-sparse repo.",
+        "skill_id": "scqubits-index",
+        "source_hints": [
+          "README.md",
+          "scqubits",
+          "scqubits/tests"
+        ]
+      },
+      {
+        "action": "create",
+        "must_cover": [
+          "Circuit construction and parameterization",
+          "HilbertSpace composition and operator workflows",
+          "diagnostics for basis/truncation choices"
+        ],
+        "reason": "Composite circuits and Hilbert-space operations are high-impact and error-prone.",
+        "skill_id": "scqubits-build-and-install",
+        "source_hints": [
+          "scqubits/core",
+          "scqubits/tests/test_circuit.py",
+          "scqubits/tests/test_hilbertspace.py",
+          "scqubits/tests/test_diag.py"
+        ]
+      }
+    ],
+    "version": 1,
+    "warnings": []
+  },
+  "skill_plan_path": "skills/.evidence/skill_plan.json",
+  "validation": {
+    "core_skills_checked": [
+      "scqubits-build-and-install",
+      "scqubits-advanced-simulation"
+    ],
+    "docs_only": false,
+    "errors": [
+      "/mnt/home/taoeli/fermilink_repos/.fermilink-auto-compile/scqubits-scqubits/skills/scqubits-build-and-install/SKILL.md: missing `## High-Signal Playbook` section.",
+      "/mnt/home/taoeli/fermilink_repos/.fermilink-auto-compile/scqubits-scqubits/skills/scqubits-advanced-simulation/SKILL.md: missing `## High-Signal Playbook` section."
+    ],
+    "index_skills": [
+      "scqubits-index"
+    ],
+    "missing_planned_skills": [],
+    "ok": false,
+    "planned_skill_ids": [
+      "scqubits-index",
+      "scqubits-build-and-install"
+    ],
+    "previous_source_inventory": {},
+    "skills_total": 3,
+    "source_inventory": {},
+    "source_links_total": 28,
+    "topic_skills": 2,
+    "warnings": []
+  }
+}
